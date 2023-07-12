@@ -4,13 +4,13 @@
 
 安装本地命令行:
 ```bash
-go install github.com/vogo/xfspark/cmd/spackchat@latest
+go install github.com/vogo/xfspark/cmd/sparkchat@latest
 
 export APP_ID=xxx
 export API_KEY=xxx
 export API_SECRET=xxx
 
-spackchat
+sparkchat
 # You: AI会替代人们的工作吗？
 # AI: 当然会了
 ```
