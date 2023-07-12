@@ -49,18 +49,21 @@ func NewSession(svr *Server, uid string) *Session {
 
 func (s *Session) Send(question string) (string, error) {
 	cmd := NewCommand(s)
+
+	saveChatHistory(s.Req, RoleUser, question)
+
 	answer, respErr := cmd.execute(s.Req)
 
 	if respErr != nil {
 		return "", respErr
 	}
 
-	saveChatHistory(s.Req, question, answer)
+	saveChatHistory(s.Req, RoleAssistant, answer)
 
 	return answer, nil
 }
 
-func saveChatHistory(req *Request, question string, answer string) {
+func saveChatHistory(req *Request, role string, content string) {
 	history := req.Payload.Message.Text
 
 	tokenCount := 0
@@ -68,7 +71,7 @@ func saveChatHistory(req *Request, question string, answer string) {
 		tokenCount += len(text.Content)
 	}
 
-	tokenCount += len(question) + len(answer)
+	tokenCount += len(content)
 
 	if tokenCount > MaxTokenSize {
 		cutIndex := len(history)
@@ -84,8 +87,7 @@ func saveChatHistory(req *Request, question string, answer string) {
 		copy(history[:len(history)-cutIndex], history[cutIndex:])
 	}
 
-	history = append(history, &RequestText{Role: RoleUser, Content: question})
-	history = append(history, &RequestText{Role: RoleAssistant, Content: answer})
+	history = append(history, &RequestText{Role: role, Content: content})
 
 	req.Payload.Message.Text = history
 }
