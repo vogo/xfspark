@@ -1,5 +1,7 @@
 # xfspark 讯飞星火认知大模型 SDK
 
+API文档: https://www.xfyun.cn/doc/spark/%E6%8E%A5%E5%8F%A3%E8%AF%B4%E6%98%8E.html
+
 ## Web SDK
 
 安装本地命令行:
