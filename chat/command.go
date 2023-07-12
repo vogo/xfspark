@@ -81,11 +81,19 @@ func (c *Command) Stop() {
 	close(c.C)
 }
 
+func (c *Command) complete(message string) {
+	c.C <- message
+
+	// stop runner, to stop read message from websocket
+	c.runner.Stop()
+}
+
 func (c *Command) handleConn() {
 	_, message, err := c.conn.ReadMessage()
 	if err != nil {
 		logger.Warnf("read message error: %v", err)
-		c.Stop()
+
+		c.complete(err.Error())
 
 		return
 	}
@@ -96,7 +104,9 @@ func (c *Command) handleConn() {
 	err = json.Unmarshal(message, resp)
 
 	if err != nil {
-		logger.Warnf("invalid message error: %v, message: %c", err, message)
+		logger.Warnf("invalid message error: %v, message: %s", err, message)
+
+		c.complete(string(message))
 
 		return
 	}
@@ -106,25 +116,21 @@ func (c *Command) handleConn() {
 
 func (c *Command) handleResp(resp *Response) {
 	if resp.Header.Code != 0 {
-		c.C <- fmt.Sprintf("请求错误：%d %s", resp.Header.Code, resp.Header.Message)
+		c.complete(fmt.Sprintf("请求错误：%d %s", resp.Header.Code, resp.Header.Message))
 
 		return
 	}
 
 	_, err := c.respBuf.WriteString(resp.Payload.Choices.Text[0].Content)
 	if err != nil {
-		c.C <- fmt.Sprintf("记录结果错误：%v", err)
+		c.complete(fmt.Sprintf("记录结果错误：%v", err))
 
 		return
 	}
 
 	if resp.Header.Status == StatusLast {
 		content := c.respBuf.String()
-
-		// stop runner, to stop read message from websocket
-		c.runner.Stop()
-
-		c.C <- content
+		c.complete(content)
 	}
 }
 
@@ -141,6 +147,8 @@ func (c *Command) execute(req *Request) (string, error) {
 	if startErr := c.start(); startErr != nil {
 		return "", startErr
 	}
+
+	// call stop only once.
 	defer c.Stop()
 
 	logger.Debugf("command request: %s", body)
@@ -151,8 +159,8 @@ func (c *Command) execute(req *Request) (string, error) {
 	}
 
 	select {
-	case respMsg := <-c.C:
-		return respMsg, nil
+	case answer := <-c.C:
+		return answer, nil
 	case <-time.After(time.Second * defaultTimeoutSeconds):
 		return "", ErrTimeout
 	}
